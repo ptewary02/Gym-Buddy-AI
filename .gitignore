@@ -24,5 +24,6 @@ dist-ssr
 *.sw?
 
 .env.local
-.envgym-buddy-backend/.env
+.env
+gym-buddy-backend/.env
 **/.env
