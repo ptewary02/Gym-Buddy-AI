@@ -24,18 +24,3 @@ dist-ssr
 *.sw?
 
 .env.local
-
-App.tsx
-README.md
-assets/
-components/
-gym-buddy-backend/
-index.html
-index.tsx
-metadata.json
-package-lock.json
-package.json
-services/
-tsconfig.json
-types.ts
-vite.config.ts
