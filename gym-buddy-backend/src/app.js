@@ -5,7 +5,7 @@ import authRoutes from "./routes/auth.routes.js";
 const app = express();
 
 app.use(cors({
-  origin: ["http://localhost:3000", "http://localhost:5173"],
+  origin: ["http://localhost:3000", "http://localhost:5173", "https://ptewary02.github.io"],
   credentials: true
 }));
 
