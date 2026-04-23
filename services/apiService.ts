@@ -1,4 +1,5 @@
-const BASE_URL = "http://localhost:5000/api";
+const BASE_URL: string =
+  (import.meta as any).env?.VITE_API_URL ?? "http://localhost:5000/api";
 
 // Helper to get stored token
 const getToken = () => localStorage.getItem("gymbuddy_token");
