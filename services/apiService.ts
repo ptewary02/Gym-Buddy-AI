@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8000/api";
+const BASE_URL = "https://gym-buddy-ai-4wtv.onrender.com";
 
 // Helper to get stored token
 const getToken = () => localStorage.getItem("gymbuddy_token");
