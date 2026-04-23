@@ -9,8 +9,10 @@ interface OnboardingProps {
 }
 
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete, loading }) => {
-  const [formData, setFormData] = useState<Partial<UserProfile>>({
+  const [formData, setFormData] = useState<Partial<UserProfile> & { email: string; password: string }>({
     name: '',
+    email: '',      // ← new
+    password: '',   // ← new
     age: 25,
     gender: 'Male',
     height: 170,
@@ -74,6 +76,33 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, loading }) => {
                 onChange={handleChange}
                 className="w-full px-4 py-3 bg-slate-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                 placeholder="Virat Kohli"
+              />
+            </div>
+
+            <div className="col-span-1 sm:col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Email</label>
+              <input
+                required
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full px-4 py-3 bg-slate-100 rounded-xl outline-none"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div className="col-span-1 sm:col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Password</label>
+              <input
+                required
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full px-4 py-3 bg-slate-100 rounded-xl outline-none"
+                placeholder="Min. 8 characters"
+                minLength={8}
               />
             </div>
             

@@ -13,14 +13,16 @@ export enum DietPreference {
 export interface UserProfile {
   id: string;
   name: string;
+  email?: string;    // ← Backend
+  password?: string; // ← Backend
   age: number;
   gender: 'Male' | 'Female' | 'Other';
-  height: number; // cm
-  weight: number; // kg
+  height: number;
+  weight: number;
   goal: FitnessGoal;
   dietPreference: DietPreference;
   gymLocation: string;
-  workoutTime: string; // e.g., "07:00 AM"
+  workoutTime: string;
   points: number;
   streak: number;
   badges: string[];
