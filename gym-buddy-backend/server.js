@@ -9,8 +9,9 @@ import connectDB from "./src/config/db.js";
 
 connectDB();
 
-const PORT = 5000;
+const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
+  console.log(`Test URL: http://localhost:${PORT}/api/auth/signup`);
 });
