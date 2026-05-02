@@ -5,23 +5,24 @@ interface OnboardingProps {
   onComplete: (user: UserProfile) => void;
   loading: boolean;
   userEmail?: string;
+  existingUser?: UserProfile | null;
 }
 
 const STEPS = ['Personal', 'Fitness', 'Gym'];
 
-const Onboarding: React.FC<OnboardingProps> = ({ onComplete, loading, userEmail }) => {
+const Onboarding: React.FC<OnboardingProps> = ({ onComplete, loading, userEmail, existingUser }) => {
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState<Partial<UserProfile>>({
-    name: '',
-    age: 25,
-    gender: 'Male',
-    height: 170,
-    weight: 70,
-    goal: FitnessGoal.MUSCLE_GAIN,
-    dietPreference: DietPreference.VEG,
-    gymLocation: '',
-    workoutTime: '07:00 AM',
-  });
+  name: existingUser?.name || '',
+  age: existingUser?.age || 25,
+  gender: existingUser?.gender || 'Male',
+  height: existingUser?.height || 170,
+  weight: existingUser?.weight || 70,
+  goal: existingUser?.goal || FitnessGoal.MUSCLE_GAIN,
+  dietPreference: existingUser?.dietPreference || DietPreference.VEG,
+  gymLocation: existingUser?.gymLocation || '',
+  workoutTime: existingUser?.workoutTime || '07:00 AM',
+});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;

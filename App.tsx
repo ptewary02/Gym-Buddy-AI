@@ -125,15 +125,23 @@ const App: React.FC = () => {
         workoutTime: profile.workoutTime,
       });
 
-      setUser(profile);
+      // Merge new profile with existing points/streak from current user
+      const mergedProfile: UserProfile = {
+        ...profile,
+        id: user?.id || profile.id,
+        points: user?.points ?? profile.points,      // ← keep existing
+        streak: user?.streak ?? profile.streak,      // ← keep existing
+        badges: user?.badges ?? profile.badges,      // ← keep existing
+        lastWorkoutDate: user?.lastWorkoutDate || '',
+        lastDietDate: user?.lastDietDate || '',
+      };
 
-      // Generate diet plan via Gemini
-      const plan = await generateDietPlan(profile);
+      setUser(mergedProfile);
+      const plan = await generateDietPlan(mergedProfile);
       setDietPlan(plan);
       setScreen('app');
     } catch (err) {
       console.error('Onboarding save failed:', err);
-      // Still move forward even if save fails
       setUser(profile);
       setScreen('app');
     } finally {
@@ -174,6 +182,10 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateProfile = () => {
+    setScreen('onboarding');
+  };
+
   const handleLogout = () => {
     apiLogout();
     setUser(null);
@@ -207,6 +219,7 @@ const App: React.FC = () => {
         onComplete={handleOnboardingComplete}
         loading={loading}
         userEmail={userEmail}
+        existingUser={user}
       />
     );
   }
@@ -226,6 +239,7 @@ const App: React.FC = () => {
             user={user}
             dietPlan={dietPlan}
             onLogActivity={handleLogActivity}
+            onUpdateProfile={handleUpdateProfile}
           />
         )}
         {activeTab === 'diet' && (

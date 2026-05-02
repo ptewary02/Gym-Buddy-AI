@@ -8,11 +8,11 @@ interface DashboardProps {
   user: UserProfile;
   dietPlan: DietPlan | null;
   onLogActivity: (type: 'workout' | 'diet') => void;
-  
+  onUpdateProfile: () => void;
   
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, dietPlan, onLogActivity}) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, dietPlan, onLogActivity, onUpdateProfile }) => {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const currentDayName = days[new Date().getDay()];
   const todayDiet = dietPlan?.sevenDayPlan.find(d => d.day === currentDayName) || dietPlan?.sevenDayPlan[0];
@@ -127,8 +127,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, dietPlan, onLogActivity}) =
                 <span className="font-medium">{user.workoutTime}</span>
               </li>
             </ul>
-            <button  className="w-full mt-6 py-2 text-sm text-emerald-600 font-semibold border border-emerald-100 rounded-lg hover:bg-emerald-50 transition-colors">
-              
+            <button
+              onClick={onUpdateProfile}
+              className="w-full mt-6 py-2 text-sm text-emerald-600 font-semibold border border-emerald-100 rounded-lg hover:bg-emerald-50 transition-colors"
+            >
               Update Profile
             </button>
           </div>
