@@ -20,6 +20,10 @@ const userSchema = new mongoose.Schema(
     streak: { type: Number, default: 0 },
     points: { type: Number, default: 0 },
     badges: { type: [String], default: [] },
+
+    // Daily checkin tracking — stored as "YYYY-MM-DD" strings
+    lastWorkoutDate: { type: String, default: "" },
+    lastDietDate: { type: String, default: "" },
   },
   { timestamps: true }
 );
