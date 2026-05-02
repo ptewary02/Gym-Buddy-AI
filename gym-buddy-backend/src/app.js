@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth.routes.js";
+import userRoutes from "./routes/user.routes.js";
 
 const app = express();
 
@@ -11,15 +12,15 @@ app.use(cors({
 
 app.use(express.json());
 
-// Debug: log every request
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`); // ← shows every incoming request
+  console.log(`${req.method} ${req.url}`);
   next();
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
 
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   res.send("Gym Buddy Backend is running 💪");
 });
 

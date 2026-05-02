@@ -1,45 +1,64 @@
-const BASE_URL = "https://gym-buddy-ai-4wtv.onrender.com/api";
+// const BASE_URL = "https://gym-buddy-ai-4wtv.onrender.com/api";
+const BASE_URL = 'http://localhost:8000/api';
 
-// Helper to get stored token
-const getToken = () => localStorage.getItem("gymbuddy_token");
-
-export const signupUser = async (data: object) => {
-  const res = await fetch(`${BASE_URL}/auth/signup`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw await res.json();
-  return res.json();
+// ── helpers ────────────────────────────────────────────────────────────────
+ 
+const authHeader = () => {
+  const token = localStorage.getItem('gymbuddy_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
 };
-
-export const loginUser = async (data: object) => {
-  const res = await fetch(`${BASE_URL}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw await res.json();
-  return res.json();
+ 
+const json = async (res: Response) => {
+  const data = await res.json();
+  if (!res.ok) return Promise.reject(data);
+  return data;
 };
-
-export const logActivity = async (type: "workout" | "diet") => {
-  const res = await fetch(`${BASE_URL}/users/log-activity`, {
-    method: "PATCH",
+ 
+// ── auth ───────────────────────────────────────────────────────────────────
+ 
+export const signup = async (email: string, password: string) => {
+  return fetch(`${BASE_URL}/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  }).then(json);
+};
+ 
+export const login = async (email: string, password: string) => {
+  const data = await fetch(`${BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  }).then(json);
+ 
+  if (data.token) localStorage.setItem('gymbuddy_token', data.token);
+  return data;
+};
+ 
+export const logout = () => {
+  localStorage.removeItem('gymbuddy_token');
+  localStorage.removeItem('gymbuddy_user');
+  localStorage.removeItem('gymbuddy_diet');
+};
+ 
+// ── profile ────────────────────────────────────────────────────────────────
+ 
+export const saveProfile = async (profile: Record<string, unknown>) => {
+  return fetch(`${BASE_URL}/user/profile`, {
+    method: 'PUT',
     headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
+      'Content-Type': 'application/json',
+      ...authHeader(),
     },
-    body: JSON.stringify({ type }),
-  });
-  if (!res.ok) throw await res.json();
-  return res.json();
+    body: JSON.stringify(profile),
+  }).then(json);
 };
-
-export const getLeaderboard = async () => {
-  const res = await fetch(`${BASE_URL}/users/leaderboard`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
-  });
-  if (!res.ok) throw await res.json();
-  return res.json();
+ 
+export const getProfile = async () => {
+  return fetch(`${BASE_URL}/user/profile`, {
+    headers: { ...authHeader() },
+  }).then(json);
 };
+ 
+export const isLoggedIn = () => !!localStorage.getItem('gymbuddy_token');
+ 

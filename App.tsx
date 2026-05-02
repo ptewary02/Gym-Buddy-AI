@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, FitnessGoal, DietPreference, DietPlan } from './types';
 import { generateDietPlan } from './services/geminiService';
-import { signupUser, logActivity } from './services/apiService';
+import { saveProfile, getProfile, logout as apiLogout, isLoggedIn } from './services/apiService';
+import AuthPage from './components/AuthPage';
 import Dashboard from './components/Dashboard';
 import Onboarding from './components/Onboarding';
 import Header from './components/Header';
@@ -9,186 +10,189 @@ import Leaderboard from './components/Leaderboard';
 import DietPlanView from './components/DietPlanView';
 import PartnerMatching from './components/PartnerMatching';
 
-// Mock other users for matching/leaderboard (replace with real API later)
+// ── App state type ──────────────────────────────────────────────────────────
+
+type AppScreen = 'auth' | 'onboarding' | 'app';
+
+// ── Mock users for partner matching / leaderboard ───────────────────────────
+
 const MOCK_USERS: UserProfile[] = [
-  {
-    id: 'user-2',
-    name: 'Amit Singh',
-    age: 24,
-    gender: 'Male',
-    height: 180,
-    weight: 82,
-    goal: FitnessGoal.MUSCLE_GAIN,
-    dietPreference: DietPreference.VEG,
-    gymLocation: 'Cult Fit, Indiranagar',
-    workoutTime: '07:15 AM',
-    points: 200,
-    streak: 12,
-    badges: [],
-  },
-  {
-    id: 'user-3',
-    name: 'Priya Patel',
-    age: 22,
-    gender: 'Female',
-    height: 165,
-    weight: 58,
-    goal: FitnessGoal.FAT_LOSS,
-    dietPreference: DietPreference.VEG,
-    gymLocation: 'Gold Gym, Whitefield',
-    workoutTime: '06:30 PM',
-    points: 80,
-    streak: 3,
-    badges: [],
-  },
-  {
-    id: 'user-4',
-    name: 'Vikram Das',
-    age: 30,
-    gender: 'Male',
-    height: 170,
-    weight: 70,
-    goal: FitnessGoal.MAINTENANCE,
-    dietPreference: DietPreference.NON_VEG,
-    gymLocation: 'Cult Fit, Indiranagar',
-    workoutTime: '07:30 AM',
-    points: 120,
-    streak: 8,
-    badges: [],
-  },
+  { id: 'user-2', name: 'Amit Singh', age: 24, gender: 'Male', height: 180, weight: 82, goal: FitnessGoal.MUSCLE_GAIN, dietPreference: DietPreference.VEG, gymLocation: 'Cult Fit, Indiranagar', workoutTime: '07:15 AM', points: 200, streak: 12, badges: [] },
+  { id: 'user-3', name: 'Priya Patel', age: 22, gender: 'Female', height: 165, weight: 58, goal: FitnessGoal.FAT_LOSS, dietPreference: DietPreference.VEG, gymLocation: 'Gold Gym, Whitefield', workoutTime: '06:30 PM', points: 80, streak: 3, badges: [] },
+  { id: 'user-4', name: 'Vikram Das', age: 30, gender: 'Male', height: 170, weight: 70, goal: FitnessGoal.MAINTENANCE, dietPreference: DietPreference.NON_VEG, gymLocation: 'Cult Fit, Indiranagar', workoutTime: '07:30 AM', points: 120, streak: 8, badges: [] },
 ];
 
-const App: React.FC = () => {
-  // ─── State ────────────────────────────────────────────────────────────────
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    const saved = localStorage.getItem('gymbuddy_user');
-    return saved ? JSON.parse(saved) : null;
-  });
+// ── helpers ─────────────────────────────────────────────────────────────────
 
+/** Map DB user object → UserProfile shape used across the frontend */
+const dbUserToProfile = (db: any): UserProfile => ({
+  id: db._id || db.id || '',
+  name: db.name || '',
+  age: db.age || 0,
+  gender: db.gender || 'Male',
+  height: db.height || 0,
+  weight: db.weight || 0,
+  goal: (db.fitnessGoal || db.goal) as FitnessGoal || FitnessGoal.MUSCLE_GAIN,
+  dietPreference: (db.dietPreference) as DietPreference || DietPreference.VEG,
+  gymLocation: db.gymLocation || '',
+  workoutTime: db.workoutTime || '',
+  points: db.points || 0,
+  streak: db.streak || 0,
+  badges: db.badges || [],
+});
+
+/** Check if a profile is complete enough to skip onboarding */
+const isProfileComplete = (u: UserProfile) =>
+  !!u.name && !!u.gymLocation && u.age > 0;
+
+// ── component ───────────────────────────────────────────────────────────────
+
+const App: React.FC = () => {
+  const [screen, setScreen] = useState<AppScreen>('auth');
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [userEmail, setUserEmail] = useState('');
   const [dietPlan, setDietPlan] = useState<DietPlan | null>(() => {
     const saved = localStorage.getItem('gymbuddy_diet');
     return saved ? JSON.parse(saved) : null;
   });
-
-  const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'diet' | 'partners' | 'leaderboard'
-  >('dashboard');
-
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'diet' | 'partners' | 'leaderboard'>('dashboard');
   const [loading, setLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [bootstrapping, setBootstrapping] = useState(true);
 
-  // ─── Persist user & diet to localStorage ─────────────────────────────────
+  // ── on mount: restore session if token exists ────────────────────────────
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('gymbuddy_user', JSON.stringify(user));
-    }
-  }, [user]);
+    const restore = async () => {
+      if (!isLoggedIn()) {
+        setBootstrapping(false);
+        return;
+      }
+      try {
+        const dbUser = await getProfile();
+        const profile = dbUserToProfile(dbUser);
+        setUser(profile);
+        setUserEmail(dbUser.email || '');
+        setScreen(isProfileComplete(profile) ? 'app' : 'onboarding');
+      } catch {
+        // token expired / invalid — go back to auth
+        apiLogout();
+      } finally {
+        setBootstrapping(false);
+      }
+    };
+    restore();
+  }, []);
 
   useEffect(() => {
-    if (dietPlan) {
-      localStorage.setItem('gymbuddy_diet', JSON.stringify(dietPlan));
-    }
+    if (dietPlan) localStorage.setItem('gymbuddy_diet', JSON.stringify(dietPlan));
   }, [dietPlan]);
 
-  // ─── Onboarding / Signup ─────────────────────────────────────────────────
-  const handleOnboardingComplete = async (
-    profile: UserProfile & { email: string; password: string }
-  ) => {
-    setLoading(true);
-    setAuthError(null);
+  // ── handlers ─────────────────────────────────────────────────────────────
 
+  const handleAuthSuccess = async (_token: string, isNewUser: boolean) => {
     try {
-      // 1. Register user in MongoDB via backend
-      const result = await signupUser({
+      const dbUser = await getProfile();
+      setUserEmail(dbUser.email || '');
+      const profile = dbUserToProfile(dbUser);
+      setUser(profile);
+
+      if (isNewUser || !isProfileComplete(profile)) {
+        setScreen('onboarding');
+      } else {
+        setScreen('app');
+      }
+    } catch {
+      // profile fetch failed — send to onboarding anyway
+      setScreen('onboarding');
+    }
+  };
+
+  const handleOnboardingComplete = async (profile: UserProfile) => {
+    setLoading(true);
+    try {
+      // Persist to backend
+      await saveProfile({
         name: profile.name,
-        email: profile.email,
-        password: profile.password,
         age: profile.age,
+        gender: profile.gender,
         height: profile.height,
         weight: profile.weight,
         fitnessGoal: profile.goal,
-        gender: profile.gender,
+        dietPreference: profile.dietPreference,
         gymLocation: profile.gymLocation,
         workoutTime: profile.workoutTime,
-        dietPreference: profile.dietPreference,
       });
 
-      // 2. Persist JWT token
-      localStorage.setItem('gymbuddy_token', result.token);
-      localStorage.setItem('gymbuddy_onboarded', 'true');
+      setUser(profile);
 
-      // 3. Merge DB response with local profile shape
-      const fullProfile: UserProfile = {
-        ...profile,
-        id: result.user.id,
-        points: result.user.points ?? 0,
-        streak: result.user.streak ?? 0,
-        badges: result.user.badges ?? [],
-      };
-      setUser(fullProfile);
-
-      // 4. Generate Gemini diet plan
-      const plan = await generateDietPlan(fullProfile);
+      // Generate diet plan via Gemini
+      const plan = await generateDietPlan(profile);
       setDietPlan(plan);
-    } catch (err: any) {
-      // err is the JSON body thrown from apiService
-      const message = err?.message ?? 'Signup failed. Please try again.';
-      setAuthError(message);
+      setScreen('app');
+    } catch (err) {
+      console.error('Onboarding save failed:', err);
+      // Still move forward even if save fails
+      setUser(profile);
+      setScreen('app');
     } finally {
       setLoading(false);
     }
   };
 
-  // ─── Log Activity (workout / diet) ───────────────────────────────────────
-  const handleLogActivity = async (type: 'workout' | 'diet') => {
+  const handleLogActivity = (type: 'workout' | 'diet') => {
     if (!user) return;
+    const bonus = type === 'workout' ? 10 : 5;
+    const updatedUser = {
+      ...user,
+      points: user.points + bonus,
+      streak: type === 'workout' ? user.streak + 1 : user.streak,
+    };
+    setUser(updatedUser);
 
-    try {
-      // Try real backend first
-      const updatedUser = await logActivity(type);
-      setUser((prev) =>
-        prev
-          ? { ...prev, points: updatedUser.points, streak: updatedUser.streak }
-          : prev
-      );
-    } catch {
-      // Fallback: update locally if backend is unavailable
-      const bonus = type === 'workout' ? 10 : 5;
-      const streakBonus = type === 'workout' ? 1 : 0;
-      setUser((prev) =>
-        prev
-          ? {
-              ...prev,
-              points: prev.points + bonus,
-              streak: prev.streak + streakBonus,
-            }
-          : prev
-      );
-    }
+    // Persist optimistically (fire-and-forget)
+    fetch('http://localhost:8000/api/user/activity', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('gymbuddy_token')}`,
+      },
+      body: JSON.stringify({ type }),
+    }).catch(console.error);
   };
 
-  // ─── Logout ───────────────────────────────────────────────────────────────
   const handleLogout = () => {
-    localStorage.removeItem('gymbuddy_user');
-    localStorage.removeItem('gymbuddy_diet');
-    localStorage.removeItem('gymbuddy_token');
-    localStorage.removeItem('gymbuddy_onboarded');
+    apiLogout();
     setUser(null);
     setDietPlan(null);
+    setUserEmail('');
+    setScreen('auth');
     setActiveTab('dashboard');
+    localStorage.removeItem('gymbuddy_diet');
   };
 
-  // ─── Render ───────────────────────────────────────────────────────────────
-  if (!user) {
+  // ── render ────────────────────────────────────────────────────────────────
+
+  if (bootstrapping) {
     return (
-      <>
-        {authError && (
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-100 border border-red-300 text-red-700 px-6 py-3 rounded-xl shadow-lg text-sm font-medium">
-            ⚠️ {authError}
-          </div>
-        )}
-        <Onboarding onComplete={handleOnboardingComplete} loading={loading} />
-      </>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-500 text-sm font-medium">Loading GymBuddy...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === 'auth') {
+    return <AuthPage onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  if (screen === 'onboarding' || !user) {
+    return (
+      <Onboarding
+        onComplete={handleOnboardingComplete}
+        loading={loading}
+        userEmail={userEmail}
+      />
     );
   }
 
@@ -209,27 +213,21 @@ const App: React.FC = () => {
             onLogActivity={handleLogActivity}
           />
         )}
-
         {activeTab === 'diet' && (
           <DietPlanView
             dietPlan={dietPlan}
             loading={loading}
             onRegenerate={async () => {
               setLoading(true);
-              try {
-                const plan = await generateDietPlan(user);
-                setDietPlan(plan);
-              } finally {
-                setLoading(false);
-              }
+              const plan = await generateDietPlan(user);
+              setDietPlan(plan);
+              setLoading(false);
             }}
           />
         )}
-
         {activeTab === 'partners' && (
           <PartnerMatching currentUser={user} otherUsers={MOCK_USERS} />
         )}
-
         {activeTab === 'leaderboard' && (
           <Leaderboard currentUser={user} otherUsers={MOCK_USERS} />
         )}
