@@ -61,3 +61,13 @@ export const getProfile = async () => {
  
 export const isLoggedIn = () => !!localStorage.getItem('gymbuddy_token');
  
+export const logActivity = async (type: 'workout' | 'diet') => {
+  return fetch(`${BASE_URL}/user/activity`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeader(),
+    },
+    body: JSON.stringify({ type }),
+  }).then(json);
+};

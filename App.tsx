@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, FitnessGoal, DietPreference, DietPlan } from './types';
 import { generateDietPlan } from './services/geminiService';
-import { saveProfile, getProfile, logout as apiLogout, isLoggedIn } from './services/apiService';
+import { saveProfile, getProfile, logout as apiLogout, isLoggedIn, logActivity } from './services/apiService';
 import AuthPage from './components/AuthPage';
 import Dashboard from './components/Dashboard';
 import Onboarding from './components/Onboarding';
@@ -138,25 +138,18 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogActivity = (type: 'workout' | 'diet') => {
+  const handleLogActivity = async (type: 'workout' | 'diet') => {
     if (!user) return;
-    const bonus = type === 'workout' ? 10 : 5;
-    const updatedUser = {
-      ...user,
-      points: user.points + bonus,
-      streak: type === 'workout' ? user.streak + 1 : user.streak,
-    };
-    setUser(updatedUser);
-
-    // Persist optimistically (fire-and-forget)
-    fetch('http://localhost:8000/api/user/activity', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('gymbuddy_token')}`,
-      },
-      body: JSON.stringify({ type }),
-    }).catch(console.error);
+    try {
+      const { user: updatedUser } = await logActivity(type);
+      setUser(prev => prev ? {
+        ...prev,
+        points: updatedUser.points,
+        streak: updatedUser.streak,
+      } : prev);
+    } catch (err) {
+      console.error('Failed to log activity:', err);
+    }
   };
 
   const handleLogout = () => {
