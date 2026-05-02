@@ -59,15 +59,24 @@ export const getProfile = async () => {
   }).then(json);
 };
  
-export const isLoggedIn = () => !!localStorage.getItem('gymbuddy_token');
- 
 export const logActivity = async (type: 'workout' | 'diet') => {
-  return fetch(`${BASE_URL}/user/activity`, {
+  const res = await fetch(`${BASE_URL}/user/activity`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeader(),
-    },
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
     body: JSON.stringify({ type }),
+  });
+  const data = await res.json();
+  // 409 means already done today — not a hard error, return it
+  if (res.status === 409) return { ...data, alreadyDone: true };
+  if (!res.ok) return Promise.reject(data);
+  return data;
+};
+ 
+export const getLeaderboard = async () => {
+  return fetch(`${BASE_URL}/user/leaderboard`, {
+    headers: { ...authHeader() },
   }).then(json);
 };
+
+ 
+export const isLoggedIn = () => !!localStorage.getItem('gymbuddy_token');

@@ -10,21 +10,8 @@ import Leaderboard from './components/Leaderboard';
 import DietPlanView from './components/DietPlanView';
 import PartnerMatching from './components/PartnerMatching';
 
-// ── App state type ──────────────────────────────────────────────────────────
-
 type AppScreen = 'auth' | 'onboarding' | 'app';
 
-// ── Mock users for partner matching / leaderboard ───────────────────────────
-
-// const MOCK_USERS: UserProfile[] = [
-//   { id: 'user-2', name: 'Amit Singh', age: 24, gender: 'Male', height: 180, weight: 82, goal: FitnessGoal.MUSCLE_GAIN, dietPreference: DietPreference.VEG, gymLocation: 'Cult Fit, Indiranagar', workoutTime: '07:15 AM', points: 200, streak: 12, badges: [] },
-//   { id: 'user-3', name: 'Priya Patel', age: 22, gender: 'Female', height: 165, weight: 58, goal: FitnessGoal.FAT_LOSS, dietPreference: DietPreference.VEG, gymLocation: 'Gold Gym, Whitefield', workoutTime: '06:30 PM', points: 80, streak: 3, badges: [] },
-//   { id: 'user-4', name: 'Vikram Das', age: 30, gender: 'Male', height: 170, weight: 70, goal: FitnessGoal.MAINTENANCE, dietPreference: DietPreference.NON_VEG, gymLocation: 'Cult Fit, Indiranagar', workoutTime: '07:30 AM', points: 120, streak: 8, badges: [] },
-// ];
-
-// ── helpers ─────────────────────────────────────────────────────────────────
-
-/** Map DB user object → UserProfile shape used across the frontend */
 const dbUserToProfile = (db: any): UserProfile => ({
   id: db._id || db.id || '',
   name: db.name || '',
@@ -43,12 +30,10 @@ const dbUserToProfile = (db: any): UserProfile => ({
   lastDietDate: db.lastDietDate || '',
 });
 
-/** Check if a profile is complete enough to skip onboarding */
 const isProfileComplete = (u: UserProfile) =>
   !!u.name && !!u.gymLocation && u.age > 0;
 
 const todayStr = () => new Date().toISOString().split('T')[0];
-// ── component ───────────────────────────────────────────────────────────────
 
 const App: React.FC = () => {
   const [screen, setScreen] = useState<AppScreen>('auth');
@@ -62,13 +47,9 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [bootstrapping, setBootstrapping] = useState(true);
 
-  // ── on mount: restore session if token exists ────────────────────────────
   useEffect(() => {
     const restore = async () => {
-      if (!isLoggedIn()) {
-        setBootstrapping(false);
-        return;
-      }
+      if (!isLoggedIn()) { setBootstrapping(false); return; }
       try {
         const dbUser = await getProfile();
         const profile = dbUserToProfile(dbUser);
@@ -76,7 +57,6 @@ const App: React.FC = () => {
         setUserEmail(dbUser.email || '');
         setScreen(isProfileComplete(profile) ? 'app' : 'onboarding');
       } catch {
-        // token expired / invalid — go back to auth
         apiLogout();
       } finally {
         setBootstrapping(false);
@@ -89,22 +69,15 @@ const App: React.FC = () => {
     if (dietPlan) localStorage.setItem('gymbuddy_diet', JSON.stringify(dietPlan));
   }, [dietPlan]);
 
-  // ── handlers ─────────────────────────────────────────────────────────────
-
   const handleAuthSuccess = async (_token: string, isNewUser: boolean) => {
     try {
       const dbUser = await getProfile();
       setUserEmail(dbUser.email || '');
       const profile = dbUserToProfile(dbUser);
       setUser(profile);
-
-      if (isNewUser || !isProfileComplete(profile)) {
-        setScreen('onboarding');
-      } else {
-        setScreen('app');
-      }
+      if (isNewUser || !isProfileComplete(profile)) setScreen('onboarding');
+      else setScreen('app');
     } catch {
-      // profile fetch failed — send to onboarding anyway
       setScreen('onboarding');
     }
   };
@@ -112,7 +85,6 @@ const App: React.FC = () => {
   const handleOnboardingComplete = async (profile: UserProfile) => {
     setLoading(true);
     try {
-      // Persist to backend
       await saveProfile({
         name: profile.name,
         age: profile.age,
@@ -124,16 +96,12 @@ const App: React.FC = () => {
         gymLocation: profile.gymLocation,
         workoutTime: profile.workoutTime,
       });
-
       setUser(profile);
-
-      // Generate diet plan via Gemini
       const plan = await generateDietPlan(profile);
       setDietPlan(plan);
       setScreen('app');
     } catch (err) {
       console.error('Onboarding save failed:', err);
-      // Still move forward even if save fails
       setUser(profile);
       setScreen('app');
     } finally {
@@ -143,7 +111,7 @@ const App: React.FC = () => {
 
   const handleLogActivity = async (type: 'workout' | 'diet') => {
     if (!user) return;
- 
+
     // Check already done today (client-side fast check)
     const today = todayStr();
     if (type === 'workout' && user.lastWorkoutDate === today) {
@@ -154,7 +122,7 @@ const App: React.FC = () => {
       alert('You already logged your diet today! Come back tomorrow 🥗');
       return;
     }
- 
+
     try {
       const result = await logActivity(type);
       if (result.alreadyDone) {
@@ -184,8 +152,6 @@ const App: React.FC = () => {
     localStorage.removeItem('gymbuddy_diet');
   };
 
-  // ── render ────────────────────────────────────────────────────────────────
-
   if (bootstrapping) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -197,36 +163,18 @@ const App: React.FC = () => {
     );
   }
 
-  if (screen === 'auth') {
-    return <AuthPage onAuthSuccess={handleAuthSuccess} />;
-  }
+  if (screen === 'auth') return <AuthPage onAuthSuccess={handleAuthSuccess} />;
 
   if (screen === 'onboarding' || !user) {
-    return (
-      <Onboarding
-        onComplete={handleOnboardingComplete}
-        loading={loading}
-        userEmail={userEmail}
-      />
-    );
+    return <Onboarding onComplete={handleOnboardingComplete} loading={loading} userEmail={userEmail} />;
   }
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header
-        user={user}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onLogout={handleLogout}
-      />
-
+      <Header user={user} activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
       <main className="flex-grow container mx-auto px-4 py-8">
         {activeTab === 'dashboard' && (
-          <Dashboard
-            user={user}
-            dietPlan={dietPlan}
-            onLogActivity={handleLogActivity}
-          />
+          <Dashboard user={user} dietPlan={dietPlan} onLogActivity={handleLogActivity} />
         )}
         {activeTab === 'diet' && (
           <DietPlanView
@@ -247,7 +195,6 @@ const App: React.FC = () => {
           <Leaderboard currentUser={user} />
         )}
       </main>
-
       <footer className="bg-white border-t py-6 text-center text-slate-500 text-sm">
         &copy; 2026 Gym Buddy AI. Personalized for {user.name}.
       </footer>

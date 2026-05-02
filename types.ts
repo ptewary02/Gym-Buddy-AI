@@ -26,6 +26,8 @@ export interface UserProfile {
   points: number;
   streak: number;
   badges: string[];
+  lastWorkoutDate?: string;
+  lastDietDate?: string; 
 }
 
 export interface Meal {
