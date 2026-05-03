@@ -78,5 +78,30 @@ export const getLeaderboard = async () => {
   }).then(json);
 };
 
+export const getAllUsers = async () => {
+  return fetch(`${BASE_URL}/user/all`, {
+    headers: { ...authHeader() },
+  }).then(json);
+};
  
+export const generateDietPlanAPI = async (user: Record<string, any>) => {
+  return fetch(`${BASE_URL}/diet/diet-plan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify(user),
+  }).then(json);
+};
+
+export const getMatchReasonAPI = async (
+  user1: Record<string, any>,
+  user2: Record<string, any>
+) => {
+  const data = await fetch(`${BASE_URL}/diet/match-reason`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify({ user1, user2 }),
+  }).then(json);
+  return data.reason as string;
+};
+
 export const isLoggedIn = () => !!localStorage.getItem('gymbuddy_token');

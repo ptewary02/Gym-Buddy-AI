@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, FitnessGoal, DietPreference, DietPlan } from './types';
-import { generateDietPlan } from './services/geminiService';
+import { generateDietPlanAPI } from './services/geminiService';
 import { saveProfile, getProfile, logout as apiLogout, isLoggedIn, logActivity } from './services/apiService';
 import AuthPage from './components/AuthPage';
 import Dashboard from './components/Dashboard';
@@ -137,7 +137,7 @@ const App: React.FC = () => {
       };
 
       setUser(mergedProfile);
-      const plan = await generateDietPlan(mergedProfile);
+      const plan = await generateDietPlanAPI(user);
       setDietPlan(plan);
       setScreen('app');
     } catch (err) {
@@ -248,7 +248,7 @@ const App: React.FC = () => {
             loading={loading}
             onRegenerate={async () => {
               setLoading(true);
-              const plan = await generateDietPlan(user);
+              const plan = await generateDietPlanAPI(user);
               setDietPlan(plan);
               setLoading(false);
             }}
